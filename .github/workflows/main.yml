@@ -5,10 +5,10 @@ name: Build & Deploy Unity WebGL
 on:
   workflow_dispatch:
 
-env:
-  UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
-  UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
-  UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+# env:
+#   UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+#   UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+#   UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
   
 jobs:
   build:
@@ -17,13 +17,14 @@ jobs:
     steps:
 
       # Checkout
-      - name: Checkout repository
-        uses: actions/checkout@v2
+      - uses: actions/checkout@v2
+        name: Checkout repository
         with:
           lfs: true
     
       # Cache
       - uses: actions/cache@v2
+        name: Cache
         with:
           path: Library
           key: Library
@@ -37,24 +38,28 @@ jobs:
       # Build
       - name: Build project
         uses: game-ci/unity-builder@v2
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
-          unityVersion: 2020.3.15f2
-          targetPlatform: StandaloneWindows64 
+          targetPlatform: WebGL
+          projectPath: EventDrivenCharacterController
 
       # Output 
       - uses: actions/upload-artifact@v2
+        name: Upload
         with:
           name: Build
           path: build
+      # - name: Zip build
+      #   run: |
+      #     pushd build/StandaloneWindows64
+      #     zip -r ../../StandaloneWindows64.zip .
+      #     popd
 
-      - name: Zip build
-        run: |
-          pushd build/StandaloneWindows64
-          zip -r ../../StandaloneWindows64.zip .
-          popd
-
-      - name: Release
-        uses: softprops/action-gh-release@v1
-        with:
-          files: StandaloneWindows64.zip
-          name: Release ${{ github.ref }}
+      # - name: Release
+      #   uses: softprops/action-gh-release@v1
+      #   with:
+      #     files: StandaloneWindows64.zip
+      #     name: Release ${{ github.ref }}
