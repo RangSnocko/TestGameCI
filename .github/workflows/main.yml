@@ -1,56 +1,60 @@
 name: Build & Deploy Unity WebGL
 
 # Fire pipeline on merge to main.
+
 on:
-  push:
-    branches:
-      - main
+  workflow_dispatch:
+
+env:
+  UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+  UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+  UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+  
 jobs:
-  # The Build job primarily uses game-ci containers to test and build your package.
   build:
-    name: Build For WebGL Platform
+    name: Build my project
     runs-on: ubuntu-latest
-    # Run this job from local Unity project directory.
-    defaults:
-      run:
-        working-directory: EventDrivenCharacterController
     steps:
-      # 1. Checkout code.
-      - uses: actions/checkout@v2
-        name: Checkout
-      # 2. Use cache, if available.
+
+      # Checkout
+      - name: Checkout repository
+        uses: actions/checkout@v2
+        with:
+          lfs: true
+    
+      # Cache
       - uses: actions/cache@v2
-        name: Cache
         with:
           path: Library
-          key: Library-${{ hashFiles('Assets/**', 'Packages/**', 'ProjectSettings/**') }}
-          restore-keys: |
-            Library-
+          key: Library
 
-      # TODO: when you ready to run tests as part of your deploy, uncomment.
-      # 3. Test
-      # - uses: game-ci/unity-test-runner@v2
-      #   name: Test
-      #   env:
-      #     UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
-      #   with:
-      #     githubToken: ${{ secrets.GITHUB_TOKEN }}
-
-      # 4. Build WebGL Package
-      # NOTE: you can expand target platforms to include other package types, if you like.
-      - uses: game-ci/unity-builder@v2
-        name: Build
-        # Requires Unity-related secrets.
-        env:
-          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
-          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
-          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+      # Test
+      - name: Run tests
+        uses: game-ci/unity-test-runner@v2
         with:
-          targetPlatform: WebGL
-          projectPath: EventDrivenCharacterController
-      # 5. Upload Package
+          unityVersion: 2020.3.15f2
+
+      # Build
+      - name: Build project
+        uses: game-ci/unity-builder@v2
+        with:
+          unityVersion: 2020.3.15f2
+          targetPlatform: StandaloneWindows64 
+
+      # Output 
       - uses: actions/upload-artifact@v2
-        name: Upload
         with:
           name: Build
           path: build
+
+      - name: Zip build
+        run: |
+          pushd build/StandaloneWindows64
+          zip -r ../../StandaloneWindows64.zip .
+          popd
+
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: StandaloneWindows64.zip
+          name: Release ${{ github.ref }}
